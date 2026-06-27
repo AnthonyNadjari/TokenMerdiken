@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Session · Claude Code</title>
   <meta name="description" content="A precision instrument for your Claude Code session — re-inits, compaction, context." />
-  <meta name="theme-color" content="#0a0b0e" />
+  <meta name="theme-color" content="#eef2f8" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -16,17 +16,17 @@
      Everything inlined: one file, nothing can half-load.
      ════════════════════════════════════════════════════════════════════════ */
   :root{
-    --ink:#06080e;          /* cold blue-black */
-    --ink-2:#0c1019;        /* lifted surface */
-    --hair:rgba(216,230,247,.10);
-    --hair-2:rgba(216,230,247,.05);
-    --ivory:#eaf1f9;        /* cool white text */
-    --muted:#8b95a8;        /* cool grey */
-    --faint:#4e576a;
-    --brass:#86c4e6;        /* the one accent — cold ice, not neon */
-    --brass-soft:#aebfd4;   /* platinum */
-    --clay:#a9e7ff;         /* brighter ice as context fills toward compaction */
-    --sage:#79d6c6;         /* cold mint — "all clear" */
+    --ink:#eef2f8;          /* cool light page */
+    --ink-2:#ffffff;        /* card / disc */
+    --hair:rgba(13,21,38,.12);
+    --hair-2:rgba(13,21,38,.07);
+    --ivory:#0d1526;        /* cool near-black text */
+    --muted:#5a6678;        /* cool grey */
+    --faint:#8a93a4;
+    --brass:#2b6cff;        /* the one accent — cold cobalt */
+    --brass-soft:#5f7da6;   /* steel */
+    --clay:#1f9bd6;         /* deeper cold blue as context fills */
+    --sage:#0fae8e;         /* cold teal — "all clear" */
     --ease:cubic-bezier(.22,1,.36,1);
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -34,14 +34,12 @@
   html{-webkit-text-size-adjust:100%}
   body{
     font-family:"Space Grotesk",system-ui,sans-serif;
-    background:var(--ink);color:var(--ivory);line-height:1.5;min-height:100dvh;
-    -webkit-font-smoothing:antialiased;position:relative;overflow-x:hidden;
+    background:linear-gradient(180deg,#f7f9fd 0%,#e6ecf5 100%);color:var(--ivory);
+    line-height:1.5;min-height:100dvh;-webkit-font-smoothing:antialiased;position:relative;overflow-x:hidden;
   }
-  /* warm vignette + the faintest grain of structure — depth, not decoration */
+  /* a cold wash of light from the top — bright, not dark */
   body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
-    background:
-      radial-gradient(120% 80% at 50% -10%, rgba(134,196,230,.10), transparent 55%),
-      radial-gradient(100% 100% at 50% 120%, rgba(0,0,0,.55), transparent 60%);}
+    background:radial-gradient(120% 70% at 50% -8%, rgba(43,108,255,.12), transparent 55%);}
   .serif{font-family:"Instrument Serif",Georgia,serif;font-weight:400}
   .tnum{font-variant-numeric:tabular-nums}
 
@@ -69,27 +67,28 @@
 
   /* ── the instrument ───────────────────────────────────────────────────── */
   .stage{display:flex;flex-direction:column;align-items:center;text-align:center}
-  .dial{position:relative;width:min(440px,92vw);aspect-ratio:1}
+  .dial{position:relative;width:min(460px,94vw);aspect-ratio:1}
   .dial svg{position:relative;z-index:1;width:100%;height:100%;overflow:visible}
-  /* layered glass depth */
-  .dial__well{position:absolute;inset:7%;border-radius:50%;z-index:0;pointer-events:none;
-    box-shadow:inset 0 1px 0 rgba(216,230,247,.06), inset 0 -30px 60px -30px rgba(0,0,0,.7);
-    background:radial-gradient(120% 120% at 50% 0%, rgba(134,196,230,.05), transparent 55%)}
-  .dial__sheen{position:absolute;inset:-3%;border-radius:50%;z-index:0;pointer-events:none;
-    background:conic-gradient(from 0deg, transparent 0deg, rgba(216,230,247,.06) 34deg, transparent 84deg);
-    mix-blend-mode:screen;animation:spin 9s linear infinite}
-  .dial::before{content:"";position:absolute;inset:9%;border-radius:50%;pointer-events:none;z-index:2;
-    background:radial-gradient(76% 64% at 30% 18%, rgba(216,230,247,.09), transparent 60%)}
-  .ring-rim{fill:none;stroke:rgba(216,230,247,.06);stroke-width:1}
+  /* dramatic cold halo glowing behind the disc */
+  .dial::before{content:"";position:absolute;inset:-12%;border-radius:50%;z-index:0;pointer-events:none;
+    background:radial-gradient(closest-side, rgba(43,108,255,.22), rgba(56,198,230,.10) 56%, transparent 72%)}
+  /* raised white instrument disc */
+  .dial__well{position:absolute;inset:6%;border-radius:50%;z-index:0;pointer-events:none;background:#fff;
+    box-shadow:0 30px 60px -30px rgba(13,21,38,.30), inset 0 1px 0 #fff}
+  /* faint cold glint sweeping the disc */
+  .dial__sheen{position:absolute;inset:6%;border-radius:50%;z-index:0;pointer-events:none;
+    background:conic-gradient(from 0deg, transparent 0deg, rgba(43,108,255,.06) 36deg, transparent 90deg);
+    animation:spin 9s linear infinite}
+  .ring-rim{fill:none;stroke:rgba(13,21,38,.06);stroke-width:1}
   .ring-track{fill:none;stroke:var(--hair);stroke-width:2}
-  .ring-fill{fill:none;stroke:url(#arc);stroke-width:4;stroke-linecap:round;
+  .ring-fill{fill:none;stroke:url(#arc);stroke-width:4.5;stroke-linecap:round;
     transition:stroke-dashoffset 1.4s var(--ease),stroke .6s var(--ease);
-    filter:drop-shadow(0 0 7px rgba(134,196,230,.3))}
+    filter:drop-shadow(0 2px 10px rgba(43,108,255,.42))}
   .tick{stroke:var(--hair);stroke-width:1.5}
-  .tick--major{stroke:rgba(244,238,228,.22)}
+  .tick--major{stroke:rgba(13,21,38,.32)}
   .marker{fill:var(--brass);transform-origin:160px 160px;
     transition:transform 1.4s var(--ease),fill .6s var(--ease);
-    filter:drop-shadow(0 0 6px rgba(169,231,255,.7))}
+    filter:drop-shadow(0 2px 6px rgba(43,108,255,.55))}
   .spin-slow{transform-origin:160px 160px;animation:spin 90s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -181,15 +180,15 @@
 
     <section class="stage rise" style="--d:.06s">
       <div class="dial">
-        <div class="dial__sheen" aria-hidden="true"></div>
         <div class="dial__well" aria-hidden="true"></div>
+        <div class="dial__sheen" aria-hidden="true"></div>
         <svg viewBox="0 0 320 320" aria-hidden="true">
           <defs>
             <linearGradient id="arc" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#c6d6e8"/><stop offset="50%" stop-color="#86c4e6"/><stop offset="100%" stop-color="#4f86ad"/>
+              <stop offset="0%" stop-color="#2b6cff"/><stop offset="55%" stop-color="#38c6e6"/><stop offset="100%" stop-color="#7fe0ff"/>
             </linearGradient>
             <linearGradient id="arcHot" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#eaf5ff"/><stop offset="55%" stop-color="#a9e7ff"/><stop offset="100%" stop-color="#6fbfe6"/>
+              <stop offset="0%" stop-color="#1640c8"/><stop offset="55%" stop-color="#2b6cff"/><stop offset="100%" stop-color="#38c6e6"/>
             </linearGradient>
           </defs>
           <circle class="ring-rim" cx="160" cy="160" r="150"/>
@@ -317,7 +316,7 @@
     const frac=Math.min(1,ctx.used/ctx.compactAt);
     const hot=frac>=0.7;
     $("#ringFill").style.stroke=hot?"url(#arcHot)":"url(#arc)";
-    $("#marker").style.fill=hot?"#a9e7ff":"#86c4e6";
+    $("#marker").style.fill=hot?"#1640c8":"#2b6cff";
     $("#ringTrack").setAttribute("stroke-dasharray",`${VIS} ${C}`);
     $("#ringTrack").setAttribute("transform",`rotate(${START} ${CX} ${CY})`);
     setArc(frac,!booted);
