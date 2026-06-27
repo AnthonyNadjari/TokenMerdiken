@@ -1,40 +1,45 @@
 {
-  "updatedAt": "2026-06-27T16:07:20.662Z",
+  "updatedAt": "2026-06-27T16:43:40.204Z",
   "isDemo": false,
   "state": "active",
   "lastEvent": {
     "type": "new_session",
-    "at": "2026-06-27T09:23:08.052Z"
+    "at": "2026-04-25T08:42:52.206Z"
   },
   "session": {
-    "_id": "6f50ba21-2369-5c64-b84c-f651e53217fe",
-    "shortId": "6f50ba",
-    "model": "claude-opus-4-8",
-    "startedAt": "2026-06-27T09:23:08.052Z",
-    "lastActivityAt": "2026-06-27T16:07:20.064Z",
-    "messages": 506,
-    "project": "TokenMerdiken"
+    "_id": "7ba3b5f0-5335-4012-8271-f31f2c0006a4",
+    "shortId": "7ba3b5",
+    "model": "claude-opus-4-7",
+    "startedAt": "2026-04-25T08:42:52.206Z",
+    "lastActivityAt": "2026-04-26T19:59:02.097Z",
+    "messages": 170,
+    "project": "Cashboard"
   },
   "context": {
-    "used": 659130,
+    "used": 128743,
     "limit": 1000000,
     "compactAt": 800000
   },
   "activity": [
-    94,
-    0,
-    0,
-    109,
-    85,
-    163,
+    2,
+    108,
     0,
     0,
     0,
     0,
     0,
     0,
-    21,
-    34
+    0,
+    0,
+    0,
+    0,
+    0,
+    60
   ],
-  "events": []
+  "events": [
+    {
+      "type": "new_session",
+      "at": "2026-04-25T08:42:52.206Z"
+    }
+  ]
 }
