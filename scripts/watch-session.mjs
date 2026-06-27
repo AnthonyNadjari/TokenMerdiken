@@ -105,18 +105,27 @@ async function parseTranscript(file) {
 
   let firstTs = null, lastTs = null, model = null, messages = 0, used = 0;
   const compactions = [];
+  const msgTimes = [];
 
   for (const line of lines) {
     let o; try { o = JSON.parse(line); } catch { continue; }
     const ts = o.timestamp || o.ts || o.time;
     if (ts) { firstTs ??= ts; lastTs = ts; }
     const role = o.message?.role || o.role;
-    if (role === "user" || role === "assistant") messages++;
+    if (role === "user" || role === "assistant") { messages++; if (ts) msgTimes.push(new Date(ts).getTime()); }
     if (o.message?.model) model = o.message.model;
     const u = o.message?.usage || o.usage;
     const t = tokensFromUsage(u);
     if (t > 0) used = t; // last known prompt size ≈ current context
     if (looksCompacted(o)) compactions.push(ts || new Date().toISOString());
+  }
+
+  // bucket message cadence across the session → activity sparkline
+  const BUCKETS = 14;
+  const activity = new Array(BUCKETS).fill(0);
+  if (msgTimes.length) {
+    const t0 = Math.min(...msgTimes), t1 = Math.max(...msgTimes), span = Math.max(1, t1 - t0);
+    for (const t of msgTimes) activity[Math.min(BUCKETS - 1, Math.floor(((t - t0) / span) * BUCKETS))]++;
   }
 
   return {
@@ -128,6 +137,7 @@ async function parseTranscript(file) {
     messages,
     used,
     compactions,
+    activity,
   };
 }
 
@@ -195,6 +205,7 @@ async function tickOnce() {
       project: p.project,
     },
     context: { used: p.used, limit: LIMIT, compactAt: COMPACT },
+    activity: p.activity,
     events,
   };
 
