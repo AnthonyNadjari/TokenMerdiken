@@ -1,286 +1,197 @@
 /* ──────────────────────────────────────────────────────────────────────────
-   TOKEN MERIDIAN · interactions
-   - magnetic button
-   - reveal sequence
-   - count-up odometers
-   - SVG donut + bar chart + model bars, all animated on enter
+   SESSION MONITOR · interactions
+   - polls status.json (via data.js) every 10s
+   - live-ticking relative times
+   - context gauge, state colours, lifecycle log
    ────────────────────────────────────────────────────────────────────────── */
 
-const $ = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+const $ = (s, r = document) => r.querySelector(s);
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const STATE = {
+  active:      { label: "Active",         color: "var(--ok)"   },
+  compacted:   { label: "Compacted",      color: "var(--info)" },
+  new_session: { label: "New session",    color: "var(--info)" },
+};
 
-/* ── helpers ──────────────────────────────────────────────────────────── */
-const easeOutExpo = (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
+const EVENT_LABEL = {
+  compacted:   "Context compacted",
+  new_session: "Session re-initialised",
+  active:      "Active",
+};
 
-function formatTokens(n) {
-  if (n >= 1e9) return (n / 1e9).toFixed(2) + "B";
-  if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
-  if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
-  return String(Math.round(n));
+let latest = null; // last status payload (for re-ticking relative times)
+
+/* ── time helpers ─────────────────────────────────────────────────────── */
+function rel(iso) {
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 45) return { v: Math.round(s), u: "sec" };
+  const m = s / 60;
+  if (m < 60) return { v: Math.round(m), u: m < 1.5 ? "min" : "min" };
+  const h = m / 60;
+  if (h < 24) return { v: +h.toFixed(h < 10 ? 1 : 0), u: "hr" };
+  return { v: +(h / 24).toFixed(1), u: "days" };
 }
-function formatInt(n) { return Math.round(n).toLocaleString("en-US"); }
-function formatMoney(n) {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function relText(iso) {
+  const { v, u } = rel(iso);
+  const unit = u === "sec" ? "s" : u === "min" ? "m" : u === "hr" ? "h" : "d";
+  return `${v}${unit} ago`;
+}
+function clock(iso) {
+  return new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
-/* animate a number from 0 → target, calling render(value) each frame */
-function countUp(target, duration, render) {
-  if (reduceMotion) { render(target); return; }
+/* ── easing count for the gauge percentage ────────────────────────────── */
+function animateNumber(el, to, dur, fmt) {
+  if (reduceMotion) { el.innerHTML = fmt(to); return; }
+  const from = parseFloat(el.dataset.cur || "0");
   const start = performance.now();
+  const ease = (t) => 1 - Math.pow(1 - t, 3);
   function frame(now) {
-    const p = Math.min(1, (now - start) / duration);
-    render(target * easeOutExpo(p));
+    const p = Math.min(1, (now - start) / dur);
+    const val = from + (to - from) * ease(p);
+    el.innerHTML = fmt(val);
     if (p < 1) requestAnimationFrame(frame);
+    else el.dataset.cur = to;
   }
   requestAnimationFrame(frame);
 }
 
-/* ── cursor glow ──────────────────────────────────────────────────────── */
-(function cursorGlow() {
-  const glow = $(".cursor-glow");
-  if (!glow || matchMedia("(pointer: coarse)").matches) return;
-  window.addEventListener("pointermove", (e) => {
-    glow.style.opacity = "1";
-    glow.style.left = e.clientX + "px";
-    glow.style.top = e.clientY + "px";
-  });
-})();
+/* ── render ───────────────────────────────────────────────────────────── */
+function render(d) {
+  latest = d;
+  const st = STATE[d.state] || STATE.active;
 
-/* ── magnetic button ──────────────────────────────────────────────────── */
-(function magnetic() {
-  const btn = $("#revealBtn");
-  if (!btn || matchMedia("(pointer: coarse)").matches) return;
-  const strength = 0.35;
-  btn.addEventListener("pointermove", (e) => {
-    const r = btn.getBoundingClientRect();
-    const x = e.clientX - r.left - r.width / 2;
-    const y = e.clientY - r.top - r.height / 2;
-    btn.style.transform = `translate(${x * strength}px, ${y * strength}px)`;
-  });
-  btn.addEventListener("pointerleave", () => { btn.style.transform = ""; });
-})();
+  // hero state colour + ribbon
+  $("#hero").style.setProperty("--state", st.color);
+  $("#statePill").style.setProperty("--state", st.color);
+  $("#stateLabel").textContent = st.label;
+  $("#demoPill").hidden = !d.isDemo;
 
-/* ── KPI counters ─────────────────────────────────────────────────────── */
-function renderKpis(kpis) {
-  $$("[data-counter]").forEach((el) => {
-    const key = el.dataset.key;
-    const prefix = el.dataset.prefix || "";
-    const suffix = el.dataset.suffix || "";
-    let target = kpis[key];
-    let render;
+  // the big glance: time since last lifecycle change
+  const ev = d.lastEvent || { type: d.state, at: d.session?.startedAt };
+  const r = rel(ev.at);
+  $("#sinceValue").textContent = r.v;
+  $("#sinceUnit").textContent = " " + r.u + " ago";
+  $("#heroLead").textContent =
+    d.state === "active" ? "Last lifecycle change" : "Changed";
+  $("#heroSub").textContent =
+    `${EVENT_LABEL[ev.type] || "Event"} · ${clock(ev.at)}`;
 
-    if (key === "tokens") {
-      render = (v) => (el.textContent = formatTokens(v));
-    } else if (key === "cost") {
-      render = (v) => (el.textContent = prefix + formatMoney(v));
-    } else if (key === "cacheHitRate") {
-      target = kpis[key] * 100;
-      render = (v) => (el.textContent = v.toFixed(0) + suffix);
-    } else {
-      render = (v) => (el.textContent = formatInt(v) + suffix);
-    }
-    countUp(target, 1400, render);
-  });
+  // context gauge
+  const ctx = d.context || { used: 0, limit: 1, compactAt: 1 };
+  const pct = Math.min(100, Math.round((ctx.used / ctx.limit) * 100));
+  const toCompact = Math.max(0, ctx.compactAt - ctx.used);
+  const compactPct = ctx.used / ctx.compactAt; // 0..1 toward auto-compaction
 
-  $("#tokensFoot").textContent = formatInt(kpis.tokens) + " tokens · last 14 days";
-}
+  const C = 326.7;
+  const fill = $("#gaugeFill");
+  const off = C * (1 - Math.min(1, compactPct));
+  // colour shifts calm → amber as it approaches compaction
+  const gaugeColor = compactPct < 0.7 ? "var(--ok)" : compactPct < 0.9 ? "var(--warn)" : "var(--warn)";
+  fill.style.stroke = gaugeColor;
+  requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.strokeDashoffset = off; }));
 
-/* ── bar chart ────────────────────────────────────────────────────────── */
-function renderBars(days) {
-  const wrap = $("#barChart");
-  wrap.innerHTML = "";
-  const max = Math.max(...days.map((d) => d.tokens));
+  animateNumber($("#ctxPct"), pct, 900, (v) => `${Math.round(v)}<span>%</span>`);
+  $("#ctxNote").textContent =
+    toCompact > 0
+      ? `${fmtTokens(toCompact)} tokens before auto-compaction`
+      : `compaction threshold reached`;
 
-  days.forEach((d, i) => {
-    const bar = document.createElement("div");
-    bar.className = "bar";
-    const h = Math.max(0.04, d.tokens / max);
-    bar.innerHTML = `
-      <div class="bar__fill" data-val="${formatTokens(d.tokens)}" style="height:${h * 100}%"></div>
-      <span class="bar__lbl">${d.label}</span>`;
-    wrap.appendChild(bar);
+  // vitals
+  const s = d.session || {};
+  setSince($("#vStarted"), s.startedAt);
+  setSince($("#vActive"), s.lastActivityAt);
+  $("#vMsgs").textContent = s.messages != null ? String(s.messages) : "—";
+  $("#vModel").textContent = (s.model || "—").replace(/^claude-/, "");
+  $("#vId").textContent = s.shortId || "—";
 
-    const fill = bar.querySelector(".bar__fill");
-    if (reduceMotion) { fill.style.transform = "scaleY(1)"; }
-    else {
-      fill.style.transitionDelay = `${i * 55}ms`;
-      requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.transform = "scaleY(1)"; }));
-    }
-  });
-}
-
-/* ── donut (SVG) ──────────────────────────────────────────────────────── */
-const TINT = { lime: "var(--lime)", coral: "var(--coral)", teal: "var(--teal)", muted: "var(--muted-2)" };
-
-function renderDonut(types) {
-  const host = $("#donut");
-  const size = 150, sw = 18, r = (size - sw) / 2, c = 2 * Math.PI * r, cx = size / 2;
-
-  const ns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
-  svg.setAttribute("width", "100%");
-  svg.setAttribute("height", "100%");
-
-  // track
-  const track = document.createElementNS(ns, "circle");
-  track.setAttribute("cx", cx); track.setAttribute("cy", cx); track.setAttribute("r", r);
-  track.setAttribute("fill", "none");
-  track.setAttribute("stroke", "var(--surface-2)");
-  track.setAttribute("stroke-width", sw);
-  svg.appendChild(track);
-
-  let offset = 0;
-  const segs = [];
-  types.forEach((t) => {
-    const len = t.value * c;
-    const seg = document.createElementNS(ns, "circle");
-    seg.setAttribute("cx", cx); seg.setAttribute("cy", cx); seg.setAttribute("r", r);
-    seg.setAttribute("fill", "none");
-    seg.setAttribute("stroke", TINT[t.tint] || "var(--lime)");
-    seg.setAttribute("stroke-width", sw);
-    seg.setAttribute("stroke-linecap", "round");
-    seg.setAttribute("stroke-dasharray", `${len} ${c - len}`);
-    seg.setAttribute("stroke-dashoffset", -offset);
-    seg.setAttribute("transform", `rotate(-90 ${cx} ${cx})`);
-    if (!reduceMotion) {
-      seg.style.opacity = "0";
-      seg.style.transition = "stroke-dasharray 0.9s var(--ease), opacity 0.5s ease";
-      seg.style.transitionDelay = `${segs.length * 120}ms`;
-      seg.setAttribute("stroke-dasharray", `0 ${c}`);
-      seg.dataset.len = len;
-    }
-    svg.appendChild(seg);
-    segs.push(seg);
-    offset += len;
-  });
-
-  // center label
-  const total = document.createElementNS(ns, "text");
-  total.setAttribute("x", cx); total.setAttribute("y", cx - 4);
-  total.setAttribute("text-anchor", "middle");
-  total.setAttribute("fill", "var(--ink)");
-  total.setAttribute("font-family", "IBM Plex Mono, monospace");
-  total.setAttribute("font-size", "20");
-  total.setAttribute("font-weight", "600");
-  total.textContent = "100%";
-  const sub = document.createElementNS(ns, "text");
-  sub.setAttribute("x", cx); sub.setAttribute("y", cx + 14);
-  sub.setAttribute("text-anchor", "middle");
-  sub.setAttribute("fill", "var(--muted)");
-  sub.setAttribute("font-family", "IBM Plex Mono, monospace");
-  sub.setAttribute("font-size", "9");
-  sub.textContent = "tokens";
-  svg.appendChild(total); svg.appendChild(sub);
-
-  host.innerHTML = "";
-  host.appendChild(svg);
-
-  if (!reduceMotion) {
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      segs.forEach((seg) => {
-        const len = +seg.dataset.len;
-        seg.style.opacity = "1";
-        seg.setAttribute("stroke-dasharray", `${len} ${c - len}`);
-      });
-    }));
+  // lifecycle log
+  const log = $("#log");
+  const events = (d.events || []).slice(0, 6);
+  if (!events.length) {
+    log.innerHTML = `<li class="log__empty">No lifecycle events recorded yet.</li>`;
+  } else {
+    log.innerHTML = events.map((e) => {
+      const color = (STATE[e.type] || STATE.active).color;
+      return `<li>
+        <span class="log__dot" style="background:${color}"></span>
+        <span class="log__label">${EVENT_LABEL[e.type] || e.type}</span>
+        <span class="log__time" data-since data-at="${e.at}">${relText(e.at)} · ${clock(e.at)}</span>
+      </li>`;
+    }).join("");
   }
 
-  // legend
-  const legend = $("#donutLegend");
-  legend.innerHTML = types.map((t) => `
-    <li>
-      <span class="dot t-${t.tint}"></span>
-      <span class="nm">${t.name}</span>
-      <span class="pc">${Math.round(t.value * 100)}%</span>
-    </li>`).join("");
+  // footer + sync state (honest about staleness)
+  const dot = $("#syncDot");
+  if (d.isDemo) {
+    dot.classList.remove("is-live");
+    $("#syncText").textContent = "demo data";
+  } else {
+    const ageS = (Date.now() - new Date(d.updatedAt).getTime()) / 1000;
+    if (ageS < 90) {
+      dot.classList.add("is-live");
+      $("#syncText").textContent = "live · " + clock(d.updatedAt);
+    } else {
+      dot.classList.remove("is-live");
+      $("#syncText").textContent = "last sync " + relText(d.updatedAt);
+    }
+  }
 }
 
-/* ── model spend bars ─────────────────────────────────────────────────── */
-function renderModelBars(models) {
-  const max = Math.max(...models.map((m) => m.cost));
-  const ul = $("#modelBars");
-  ul.innerHTML = models.map((m) => `
-    <li>
-      <div class="row">
-        <span class="nm">${m.name}</span>
-        <span class="val">$${formatMoney(m.cost)} · ${formatTokens(m.tokens)} tok</span>
-      </div>
-      <div class="track"><div class="track__fill t-${m.tint}" data-w="${(m.cost / max) * 100}"></div></div>
-    </li>`).join("");
+function setSince(el, iso) {
+  if (!iso) { el.textContent = "—"; return; }
+  el.dataset.at = iso;
+  el.textContent = relText(iso);
+}
 
-  $$(".track__fill", ul).forEach((fill, i) => {
-    const w = fill.dataset.w + "%";
-    if (reduceMotion) { fill.style.width = w; return; }
-    fill.style.transitionDelay = `${i * 120}ms`;
-    requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = w; }));
+function fmtTokens(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
+  if (n >= 1e3) return (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + "K";
+  return String(Math.round(n));
+}
+
+/* re-tick all relative times every second so the glance stays honest */
+function tick() {
+  if (!latest) return;
+  // hero
+  const ev = latest.lastEvent || { at: latest.session?.startedAt };
+  if (ev?.at) {
+    const r = rel(ev.at);
+    $("#sinceValue").textContent = r.v;
+    $("#sinceUnit").textContent = " " + r.u + " ago";
+  }
+  // every [data-since]
+  document.querySelectorAll("[data-since][data-at]").forEach((el) => {
+    el.firstChild
+      ? (el.childNodes[0].nodeValue = relText(el.dataset.at) + (el.dataset.at && el.classList.contains("log__time") ? " · " + clock(el.dataset.at) : ""))
+      : (el.textContent = relText(el.dataset.at));
   });
 }
 
-/* ── orchestration ────────────────────────────────────────────────────── */
-function paint(data) {
-  $("#updated").textContent =
-    "updated " + new Date(data.updatedAt).toLocaleString("en-US", {
-      month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-    });
-  $("#demoBadge").hidden = !data.isDemo;
-
-  renderKpis(data.kpis);
-  renderBars(data.days);
-  renderDonut(data.tokenTypes);
-  renderModelBars(data.models);
-}
-
-async function loadAndShow() {
-  const data = await window.TokenMeridian.getUsage();
-  paint(data);
-}
-
-/* assign stagger delays to dash sections */
-function tagReveal() {
-  const items = [
-    ".dash__head", ".kpis", ".grid", ".dash__foot",
-  ].map((s) => $(s)).filter(Boolean);
-  items.forEach((el, i) => {
-    el.classList.add("reveal-up");
-    el.style.setProperty("--d", `${0.06 * i}s`);
-  });
+/* ── polling ──────────────────────────────────────────────────────────── */
+async function refresh() {
+  const dot = $("#syncDot");
+  dot.classList.remove("is-live");
+  $("#syncText").textContent = "syncing…";
+  const d = await window.SessionMonitor.getStatus();
+  render(d);
 }
 
 (function init() {
-  const btn = $("#revealBtn");
-  const hero = $("#hero");
-  const dash = $("#dash");
-  const rerun = $("#rerun");
+  const app = $("#app");
 
-  btn.addEventListener("click", async () => {
-    btn.classList.add("is-loading");
-    $(".reveal-btn__label").textContent = "Computing";
+  // entrance
+  [["#hero", 0], [".tile--gauge", 0.05], [".tile--vitals", 0.1], [".tile--log", 0.15]]
+    .forEach(([sel, d]) => { const el = $(sel); if (el) { el.classList.add("rise"); el.style.setProperty("--d", d + "s"); } });
 
-    // run data fetch + a beat for the loading shimmer
-    const dataPromise = window.TokenMeridian.getUsage();
-    await new Promise((r) => setTimeout(r, reduceMotion ? 0 : 850));
-    const data = await dataPromise;
-
-    hero.classList.add("is-leaving");
-    setTimeout(() => {
-      hero.hidden = true;
-      dash.hidden = false;
-      tagReveal();
-      requestAnimationFrame(() => {
-        dash.classList.add("is-in");
-        paint(data);
-      });
-    }, reduceMotion ? 0 : 500);
+  refresh().then(() => {
+    app.removeAttribute("data-loading");
+    app.classList.add("is-ready");
   });
 
-  rerun.addEventListener("click", async () => {
-    rerun.disabled = true;
-    rerun.textContent = "↻ recomputing";
-    await loadAndShow();
-    rerun.textContent = "↻ recompute";
-    rerun.disabled = false;
-  });
+  $("#refresh").addEventListener("click", refresh);
+  setInterval(refresh, 10000); // poll status.json
+  setInterval(tick, 1000);     // keep relative times live
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
 })();

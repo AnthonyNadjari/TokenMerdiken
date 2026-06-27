@@ -2,120 +2,134 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Token Meridian · Claude consumption</title>
-  <meta name="description" content="A live look at your Claude token consumption." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Session Monitor · Claude Code</title>
+  <meta name="description" content="Glance and see your Claude Code session state — re-inits, compaction, context fullness." />
+  <meta name="theme-color" content="#0c1322" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!-- drifting gradient backdrop + grain -->
-  <div class="bg" aria-hidden="true">
-    <span class="blob blob--lime"></span>
-    <span class="blob blob--coral"></span>
-    <span class="blob blob--teal"></span>
-  </div>
-  <div class="grain" aria-hidden="true"></div>
-  <div class="cursor-glow" aria-hidden="true"></div>
+  <div class="aura" aria-hidden="true"></div>
 
-  <main class="stage" id="stage">
-
-    <!-- ░░ HERO ░░ -->
-    <section class="hero" id="hero">
-      <div class="hero__eyebrow">
-        <span class="pulse"></span> token meridian
+  <main class="wrap" id="app" data-loading>
+    <!-- header -->
+    <header class="top">
+      <div class="brand">
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.5 2.5M16.5 16.5L19 19M19 5l-2.5 2.5M7.5 16.5L5 19"/>
+            <circle cx="12" cy="12" r="3.2"/>
+          </svg>
+        </span>
+        <span class="brand__name">Session Monitor</span>
       </div>
-      <h1 class="hero__title">
-        Where did all your<br /><em>tokens</em> go?
+      <div class="sync">
+        <span class="sync__dot" id="syncDot"></span>
+        <span id="syncText">syncing…</span>
+        <button class="iconbtn" id="refresh" title="Sync now" aria-label="Sync now">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- HERO: the one glance -->
+    <section class="hero" id="hero" data-state="active">
+      <div class="hero__row">
+        <span class="status-pill" id="statePill">
+          <span class="status-pill__dot"></span>
+          <span id="stateLabel">Active</span>
+        </span>
+        <span class="demo-pill" id="demoPill" hidden>demo</span>
+      </div>
+
+      <p class="hero__lead" id="heroLead">Last change</p>
+      <h1 class="hero__big">
+        <span id="sinceValue">—</span><span class="hero__unit" id="sinceUnit"></span>
       </h1>
-      <p class="hero__sub">
-        One button. The honest truth about your Claude consumption —
-        spend, models, cache savings, the lot.
-      </p>
-
-      <button class="reveal-btn" id="revealBtn" type="button">
-        <span class="reveal-btn__label">Reveal my consumption</span>
-        <span class="reveal-btn__arrow">→</span>
-        <span class="reveal-btn__shine" aria-hidden="true"></span>
-      </button>
-
-      <p class="hero__hint" id="heroHint">no sign-in · runs entirely in your browser</p>
+      <p class="hero__sub" id="heroSub">—</p>
     </section>
 
-    <!-- ░░ DASHBOARD ░░ -->
-    <section class="dash" id="dash" hidden>
-      <header class="dash__head">
-        <div class="dash__title">
-          <span class="livedot"></span>
-          <h2>Consumption report</h2>
+    <!-- BENTO -->
+    <section class="bento">
+      <!-- context gauge -->
+      <article class="tile tile--gauge">
+        <div class="tile__head">
+          <h2>Context window</h2>
+          <span class="tile__hint" id="ctxHint">to compaction</span>
         </div>
-        <div class="dash__meta">
-          <span id="updated">—</span>
-          <button class="ghost-btn" id="rerun" type="button">↻ recompute</button>
+        <div class="gauge">
+          <svg viewBox="0 0 120 120" class="gauge__svg" id="gaugeSvg" aria-hidden="true">
+            <circle class="gauge__track" cx="60" cy="60" r="52"/>
+            <circle class="gauge__fill"  cx="60" cy="60" r="52" id="gaugeFill"/>
+          </svg>
+          <div class="gauge__center">
+            <span class="gauge__pct" id="ctxPct">0<span>%</span></span>
+            <span class="gauge__cap" id="ctxCap">full</span>
+          </div>
         </div>
-      </header>
+        <p class="gauge__note" id="ctxNote">—</p>
+      </article>
 
-      <!-- KPI row -->
-      <div class="kpis">
-        <article class="kpi kpi--hero">
-          <span class="kpi__k">total tokens</span>
-          <span class="kpi__v" data-counter data-key="tokens">0</span>
-          <span class="kpi__foot" id="tokensFoot">last 14 days</span>
-        </article>
-        <article class="kpi">
-          <span class="kpi__k">estimated spend</span>
-          <span class="kpi__v" data-counter data-key="cost" data-prefix="$">0</span>
-          <span class="kpi__foot">at list pricing</span>
-        </article>
-        <article class="kpi">
-          <span class="kpi__k">requests</span>
-          <span class="kpi__v" data-counter data-key="requests">0</span>
-          <span class="kpi__foot">api calls</span>
-        </article>
-        <article class="kpi">
-          <span class="kpi__k">cache hit rate</span>
-          <span class="kpi__v" data-counter data-key="cacheHitRate" data-suffix="%">0</span>
-          <span class="kpi__foot">of input served from cache</span>
-        </article>
-      </div>
+      <!-- vitals -->
+      <article class="tile tile--vitals">
+        <div class="tile__head"><h2>Session</h2></div>
+        <ul class="vitals">
+          <li>
+            <span class="vitals__ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            </span>
+            <span class="vitals__k">Started</span>
+            <span class="vitals__v" data-since id="vStarted">—</span>
+          </li>
+          <li>
+            <span class="vitals__ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+            </span>
+            <span class="vitals__k">Last activity</span>
+            <span class="vitals__v" data-since id="vActive">—</span>
+          </li>
+          <li>
+            <span class="vitals__ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </span>
+            <span class="vitals__k">Messages</span>
+            <span class="vitals__v" id="vMsgs">—</span>
+          </li>
+          <li>
+            <span class="vitals__ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6v6H9z"/></svg>
+            </span>
+            <span class="vitals__k">Model</span>
+            <span class="vitals__v mono" id="vModel">—</span>
+          </li>
+          <li>
+            <span class="vitals__ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M7 9l5 5 5-5"/><path d="M12 14V3"/></svg>
+            </span>
+            <span class="vitals__k">Session id</span>
+            <span class="vitals__v mono" id="vId">—</span>
+          </li>
+        </ul>
+      </article>
 
-      <!-- charts grid -->
-      <div class="grid">
-        <article class="card card--wide">
-          <div class="card__head">
-            <h3>Daily token burn</h3>
-            <span class="card__tag">14d</span>
-          </div>
-          <div class="chart" id="barChart"></div>
-        </article>
-
-        <article class="card">
-          <div class="card__head">
-            <h3>Token mix</h3>
-            <span class="card__tag">type</span>
-          </div>
-          <div class="donut-wrap">
-            <div class="donut" id="donut"></div>
-            <ul class="legend" id="donutLegend"></ul>
-          </div>
-        </article>
-
-        <article class="card card--wide">
-          <div class="card__head">
-            <h3>Spend by model</h3>
-            <span class="card__tag">$</span>
-          </div>
-          <ul class="bars" id="modelBars"></ul>
-        </article>
-      </div>
-
-      <footer class="dash__foot">
-        <span class="badge" id="demoBadge">demo data</span>
-        <span>Numbers are illustrative — wire in <code>data.js</code> for the real thing.</span>
-      </footer>
+      <!-- lifecycle log -->
+      <article class="tile tile--log">
+        <div class="tile__head">
+          <h2>Lifecycle</h2>
+          <span class="tile__hint">re-inits &amp; compactions</span>
+        </div>
+        <ol class="log" id="log"></ol>
+      </article>
     </section>
+
+    <footer class="foot">
+      <span id="footText">Reads <code>status.json</code> · falls back to demo data.</span>
+    </footer>
   </main>
 
   <script src="data.js"></script>

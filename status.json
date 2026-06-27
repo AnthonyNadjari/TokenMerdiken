@@ -1,0 +1,24 @@
+{
+  "updatedAt": "2026-06-27T11:12:47.021Z",
+  "isDemo": false,
+  "state": "active",
+  "lastEvent": {
+    "type": "new_session",
+    "at": "2026-06-27T09:23:08.052Z"
+  },
+  "session": {
+    "_id": "6f50ba21-2369-5c64-b84c-f651e53217fe",
+    "shortId": "6f50ba",
+    "model": "claude-opus-4-8",
+    "startedAt": "2026-06-27T09:23:08.052Z",
+    "lastActivityAt": "2026-06-27T11:12:46.588Z",
+    "messages": 170,
+    "project": "TokenMerdiken"
+  },
+  "context": {
+    "used": 412204,
+    "limit": 1000000,
+    "compactAt": 800000
+  },
+  "events": []
+}
