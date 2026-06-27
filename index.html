@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Token Meridian · Claude consumption</title>
+  <meta name="description" content="A live look at your Claude token consumption." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- drifting gradient backdrop + grain -->
+  <div class="bg" aria-hidden="true">
+    <span class="blob blob--lime"></span>
+    <span class="blob blob--coral"></span>
+    <span class="blob blob--teal"></span>
+  </div>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="cursor-glow" aria-hidden="true"></div>
+
+  <main class="stage" id="stage">
+
+    <!-- ░░ HERO ░░ -->
+    <section class="hero" id="hero">
+      <div class="hero__eyebrow">
+        <span class="pulse"></span> token meridian
+      </div>
+      <h1 class="hero__title">
+        Where did all your<br /><em>tokens</em> go?
+      </h1>
+      <p class="hero__sub">
+        One button. The honest truth about your Claude consumption —
+        spend, models, cache savings, the lot.
+      </p>
+
+      <button class="reveal-btn" id="revealBtn" type="button">
+        <span class="reveal-btn__label">Reveal my consumption</span>
+        <span class="reveal-btn__arrow">→</span>
+        <span class="reveal-btn__shine" aria-hidden="true"></span>
+      </button>
+
+      <p class="hero__hint" id="heroHint">no sign-in · runs entirely in your browser</p>
+    </section>
+
+    <!-- ░░ DASHBOARD ░░ -->
+    <section class="dash" id="dash" hidden>
+      <header class="dash__head">
+        <div class="dash__title">
+          <span class="livedot"></span>
+          <h2>Consumption report</h2>
+        </div>
+        <div class="dash__meta">
+          <span id="updated">—</span>
+          <button class="ghost-btn" id="rerun" type="button">↻ recompute</button>
+        </div>
+      </header>
+
+      <!-- KPI row -->
+      <div class="kpis">
+        <article class="kpi kpi--hero">
+          <span class="kpi__k">total tokens</span>
+          <span class="kpi__v" data-counter data-key="tokens">0</span>
+          <span class="kpi__foot" id="tokensFoot">last 14 days</span>
+        </article>
+        <article class="kpi">
+          <span class="kpi__k">estimated spend</span>
+          <span class="kpi__v" data-counter data-key="cost" data-prefix="$">0</span>
+          <span class="kpi__foot">at list pricing</span>
+        </article>
+        <article class="kpi">
+          <span class="kpi__k">requests</span>
+          <span class="kpi__v" data-counter data-key="requests">0</span>
+          <span class="kpi__foot">api calls</span>
+        </article>
+        <article class="kpi">
+          <span class="kpi__k">cache hit rate</span>
+          <span class="kpi__v" data-counter data-key="cacheHitRate" data-suffix="%">0</span>
+          <span class="kpi__foot">of input served from cache</span>
+        </article>
+      </div>
+
+      <!-- charts grid -->
+      <div class="grid">
+        <article class="card card--wide">
+          <div class="card__head">
+            <h3>Daily token burn</h3>
+            <span class="card__tag">14d</span>
+          </div>
+          <div class="chart" id="barChart"></div>
+        </article>
+
+        <article class="card">
+          <div class="card__head">
+            <h3>Token mix</h3>
+            <span class="card__tag">type</span>
+          </div>
+          <div class="donut-wrap">
+            <div class="donut" id="donut"></div>
+            <ul class="legend" id="donutLegend"></ul>
+          </div>
+        </article>
+
+        <article class="card card--wide">
+          <div class="card__head">
+            <h3>Spend by model</h3>
+            <span class="card__tag">$</span>
+          </div>
+          <ul class="bars" id="modelBars"></ul>
+        </article>
+      </div>
+
+      <footer class="dash__foot">
+        <span class="badge" id="demoBadge">demo data</span>
+        <span>Numbers are illustrative — wire in <code>data.js</code> for the real thing.</span>
+      </footer>
+    </section>
+  </main>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
