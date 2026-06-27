@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-27T11:32:54.753Z",
+  "updatedAt": "2026-06-27T11:53:00.040Z",
   "isDemo": false,
   "state": "active",
   "lastEvent": {
@@ -11,12 +11,12 @@
     "shortId": "6f50ba",
     "model": "claude-opus-4-8",
     "startedAt": "2026-06-27T09:23:08.052Z",
-    "lastActivityAt": "2026-06-27T11:32:53.172Z",
-    "messages": 273,
+    "lastActivityAt": "2026-06-27T11:52:58.367Z",
+    "messages": 334,
     "project": "TokenMerdiken"
   },
   "context": {
-    "used": 485154,
+    "used": 513428,
     "limit": 1000000,
     "compactAt": 800000
   },

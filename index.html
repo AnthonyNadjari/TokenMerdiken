@@ -69,22 +69,31 @@
 
   /* ── the instrument ───────────────────────────────────────────────────── */
   .stage{display:flex;flex-direction:column;align-items:center;text-align:center}
-  .dial{position:relative;width:min(372px,86vw);aspect-ratio:1}
-  .dial svg{width:100%;height:100%;overflow:visible}
-  .dial::before{content:"";position:absolute;inset:9%;border-radius:50%;pointer-events:none;z-index:1;
-    background:radial-gradient(78% 68% at 32% 20%, rgba(216,230,247,.07), transparent 62%)}
+  .dial{position:relative;width:min(440px,92vw);aspect-ratio:1}
+  .dial svg{position:relative;z-index:1;width:100%;height:100%;overflow:visible}
+  /* layered glass depth */
+  .dial__well{position:absolute;inset:7%;border-radius:50%;z-index:0;pointer-events:none;
+    box-shadow:inset 0 1px 0 rgba(216,230,247,.06), inset 0 -30px 60px -30px rgba(0,0,0,.7);
+    background:radial-gradient(120% 120% at 50% 0%, rgba(134,196,230,.05), transparent 55%)}
+  .dial__sheen{position:absolute;inset:-3%;border-radius:50%;z-index:0;pointer-events:none;
+    background:conic-gradient(from 0deg, transparent 0deg, rgba(216,230,247,.06) 34deg, transparent 84deg);
+    mix-blend-mode:screen;animation:spin 9s linear infinite}
+  .dial::before{content:"";position:absolute;inset:9%;border-radius:50%;pointer-events:none;z-index:2;
+    background:radial-gradient(76% 64% at 30% 18%, rgba(216,230,247,.09), transparent 60%)}
   .ring-rim{fill:none;stroke:rgba(216,230,247,.06);stroke-width:1}
   .ring-track{fill:none;stroke:var(--hair);stroke-width:2}
-  .ring-fill{fill:none;stroke:url(#arc);stroke-width:3.5;stroke-linecap:round;
-    transition:stroke-dashoffset 1.3s var(--ease),stroke .6s var(--ease);
-    filter:drop-shadow(0 0 6px rgba(134,196,230,.25))}
+  .ring-fill{fill:none;stroke:url(#arc);stroke-width:4;stroke-linecap:round;
+    transition:stroke-dashoffset 1.4s var(--ease),stroke .6s var(--ease);
+    filter:drop-shadow(0 0 7px rgba(134,196,230,.3))}
   .tick{stroke:var(--hair);stroke-width:1.5}
   .tick--major{stroke:rgba(244,238,228,.22)}
-  .marker{fill:var(--brass);transition:transform 1.3s var(--ease),fill .6s var(--ease)}
+  .marker{fill:var(--brass);transform-origin:160px 160px;
+    transition:transform 1.4s var(--ease),fill .6s var(--ease);
+    filter:drop-shadow(0 0 6px rgba(169,231,255,.7))}
   .spin-slow{transform-origin:160px 160px;animation:spin 90s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
 
-  .dial__core{position:absolute;inset:0;display:flex;flex-direction:column;
+  .dial__core{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:2px;padding:14% 16%}
   .state{display:inline-flex;align-items:center;gap:8px;margin-bottom:14px;
     font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--state,var(--sage))}
@@ -172,6 +181,8 @@
 
     <section class="stage rise" style="--d:.06s">
       <div class="dial">
+        <div class="dial__sheen" aria-hidden="true"></div>
+        <div class="dial__well" aria-hidden="true"></div>
         <svg viewBox="0 0 320 320" aria-hidden="true">
           <defs>
             <linearGradient id="arc" x1="0" y1="0" x2="1" y2="1">
@@ -245,7 +256,7 @@
   const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
   const STATE={active:{label:"Active",c:"var(--sage)"},compacted:{label:"Compacted",c:"var(--brass)"},new_session:{label:"Re-initialised",c:"var(--brass)"}};
   const ELABEL={compacted:"Context compacted",new_session:"Session re-initialised",active:"Active"};
-  let latest=null;
+  let latest=null,booted=false;
 
   function rel(iso){const s=Math.max(0,(Date.now()-new Date(iso))/1000);
     if(s<45)return{v:Math.round(s),u:"sec"};const m=s/60;if(m<60)return{v:Math.round(m),u:"min"};
@@ -267,6 +278,25 @@
     g.innerHTML=s;
   }
 
+  function countUp(el,to,dur,fmt){
+    if(reduce){el.innerHTML=fmt(to);return;}
+    const start=performance.now(),ease=t=>1-Math.pow(1-t,3);
+    (function f(now){const p=Math.min(1,(now-start)/dur);el.innerHTML=fmt(to*ease(p));
+      if(p<1)requestAnimationFrame(f);else el.innerHTML=fmt(to);})(performance.now());
+  }
+  function setArc(frac,first){
+    const fill=$("#ringFill"),mk=$("#marker"),finalOff=VIS*(1-frac),finalRot=frac*SPAN;
+    fill.setAttribute("stroke-dasharray",`${VIS} ${C}`);
+    fill.setAttribute("transform",`rotate(${START} ${CX} ${CY})`);
+    if(first&&!reduce){
+      fill.setAttribute("stroke-dashoffset",VIS);mk.style.transform="rotate(0deg)";
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        fill.style.strokeDashoffset="0";mk.style.transform=`rotate(${SPAN}deg)`;
+        setTimeout(()=>{fill.style.strokeDashoffset=finalOff;mk.style.transform=`rotate(${finalRot}deg)`;},800);
+      }));
+    }else{fill.style.strokeDashoffset=finalOff;mk.style.transform=`rotate(${finalRot}deg)`;}
+  }
+
   function render(d){
     latest=d;
     const st=STATE[d.state]||STATE.active;
@@ -276,7 +306,9 @@
 
     const ev=d.lastEvent||{type:d.state,at:d.session&&d.session.startedAt};
     const r=rel(ev.at);
-    $("#sinceV").textContent=r.v;$("#sinceU").textContent=r.u==="sec"?"sec":r.u==="min"?"min":r.u==="hr"?"hr":"days";
+    const dec=Number.isInteger(r.v)?0:1;
+    if(!booted)countUp($("#sinceV"),r.v,1100,v=>v.toFixed(dec));else $("#sinceV").textContent=r.v;
+    $("#sinceU").textContent=r.u==="sec"?"sec":r.u==="min"?"min":r.u==="hr"?"hr":"days";
     $("#sinceWhen").textContent=`${ELABEL[ev.type]||"Event"} · ${clock(ev.at)}`;
 
     const ctx=d.context||{used:0,limit:1,compactAt:1};
@@ -284,27 +316,14 @@
     const toC=Math.max(0,ctx.compactAt-ctx.used);
     const frac=Math.min(1,ctx.used/ctx.compactAt);
     const hot=frac>=0.7;
-    const col=hot?"url(#arcHot)":"url(#arc)";
-    const dotc=hot?"#a9e7ff":"#86c4e6";
-
+    $("#ringFill").style.stroke=hot?"url(#arcHot)":"url(#arc)";
+    $("#marker").style.fill=hot?"#a9e7ff":"#86c4e6";
     $("#ringTrack").setAttribute("stroke-dasharray",`${VIS} ${C}`);
     $("#ringTrack").setAttribute("transform",`rotate(${START} ${CX} ${CY})`);
-    const fill=$("#ringFill");
-    fill.setAttribute("stroke-dasharray",`${VIS} ${C}`);
-    fill.setAttribute("transform",`rotate(${START} ${CX} ${CY})`);
-    fill.style.stroke=col;
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      fill.style.strokeDashoffset=reduce?VIS*(1-frac):VIS*(1-frac);
-    }));
-    if(reduce)fill.setAttribute("stroke-dashoffset",VIS*(1-frac));
-    else fill.setAttribute("stroke-dashoffset",VIS); // start empty, animate via style
+    setArc(frac,!booted);
 
-    // marker dot at the arc's end
-    const[mx,my]=pt(R,START+frac*SPAN);
-    const m=$("#marker");m.setAttribute("cx",mx.toFixed(1));m.setAttribute("cy",my.toFixed(1));
-    m.setAttribute("r","4.5");m.style.fill=dotc;
-
-    $("#ctxPct").innerHTML=`${pct}<span>%</span>`;
+    if(!booted)countUp($("#ctxPct"),pct,1100,v=>`${Math.round(v)}<span>%</span>`);
+    else $("#ctxPct").innerHTML=`${pct}<span>%</span>`;
     $("#ctxNote").textContent=toC>0?`${fmtT(toC)} tokens before auto-compaction`:`compaction threshold reached`;
 
     const s=d.session||{};
@@ -325,6 +344,7 @@
     else{const age=(Date.now()-new Date(d.updatedAt))/1000;
       if(age<90){dot.classList.add("is-live");$("#syncText").textContent="live "+clock(d.updatedAt);}
       else{dot.classList.remove("is-live");$("#syncText").textContent="synced "+relText(d.updatedAt);}}
+    booted=true;
   }
   function setSince(el,iso){if(!iso){el.textContent="—";return;}el.dataset.at=iso;el.textContent=relText(iso);}
 
@@ -341,6 +361,8 @@
 
   (function(){
     buildTicks();
+    const mk=$("#marker"),[bx,by]=pt(R,START);
+    mk.setAttribute("cx",bx.toFixed(1));mk.setAttribute("cy",by.toFixed(1));mk.setAttribute("r","5");
     refresh().then(()=>$("#app").classList.add("is-ready"));
     $("#refresh").addEventListener("click",refresh);
     setInterval(refresh,10000);
