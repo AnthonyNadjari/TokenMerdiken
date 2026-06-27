@@ -16,17 +16,17 @@
      Everything inlined: one file, nothing can half-load.
      ════════════════════════════════════════════════════════════════════════ */
   :root{
-    --ink:#0a0b0e;          /* deep, faintly warm black */
-    --ink-2:#101218;        /* lifted surface */
-    --hair:rgba(244,238,228,.10);
-    --hair-2:rgba(244,238,228,.05);
-    --ivory:#f4eee2;        /* warm off-white text */
-    --muted:#9a948a;        /* warm grey */
-    --faint:#5d584f;
-    --brass:#e3b066;        /* the one accent — warm, not neon */
-    --brass-soft:#caa168;
-    --clay:#d08a5e;         /* shown only as context fills toward compaction */
-    --sage:#a9c3a0;         /* calm "all clear" */
+    --ink:#06080e;          /* cold blue-black */
+    --ink-2:#0c1019;        /* lifted surface */
+    --hair:rgba(216,230,247,.10);
+    --hair-2:rgba(216,230,247,.05);
+    --ivory:#eaf1f9;        /* cool white text */
+    --muted:#8b95a8;        /* cool grey */
+    --faint:#4e576a;
+    --brass:#86c4e6;        /* the one accent — cold ice, not neon */
+    --brass-soft:#aebfd4;   /* platinum */
+    --clay:#a9e7ff;         /* brighter ice as context fills toward compaction */
+    --sage:#79d6c6;         /* cold mint — "all clear" */
     --ease:cubic-bezier(.22,1,.36,1);
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -40,8 +40,8 @@
   /* warm vignette + the faintest grain of structure — depth, not decoration */
   body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
     background:
-      radial-gradient(120% 80% at 50% -10%, rgba(227,176,102,.10), transparent 55%),
-      radial-gradient(100% 100% at 50% 120%, rgba(0,0,0,.5), transparent 60%);}
+      radial-gradient(120% 80% at 50% -10%, rgba(134,196,230,.10), transparent 55%),
+      radial-gradient(100% 100% at 50% 120%, rgba(0,0,0,.55), transparent 60%);}
   .serif{font-family:"Instrument Serif",Georgia,serif;font-weight:400}
   .tnum{font-variant-numeric:tabular-nums}
 
@@ -69,11 +69,15 @@
 
   /* ── the instrument ───────────────────────────────────────────────────── */
   .stage{display:flex;flex-direction:column;align-items:center;text-align:center}
-  .dial{position:relative;width:min(360px,84vw);aspect-ratio:1}
+  .dial{position:relative;width:min(372px,86vw);aspect-ratio:1}
   .dial svg{width:100%;height:100%;overflow:visible}
+  .dial::before{content:"";position:absolute;inset:9%;border-radius:50%;pointer-events:none;z-index:1;
+    background:radial-gradient(78% 68% at 32% 20%, rgba(216,230,247,.07), transparent 62%)}
+  .ring-rim{fill:none;stroke:rgba(216,230,247,.06);stroke-width:1}
   .ring-track{fill:none;stroke:var(--hair);stroke-width:2}
-  .ring-fill{fill:none;stroke:var(--brass);stroke-width:3;stroke-linecap:round;
-    transition:stroke-dashoffset 1.3s var(--ease),stroke .6s var(--ease)}
+  .ring-fill{fill:none;stroke:url(#arc);stroke-width:3.5;stroke-linecap:round;
+    transition:stroke-dashoffset 1.3s var(--ease),stroke .6s var(--ease);
+    filter:drop-shadow(0 0 6px rgba(134,196,230,.25))}
   .tick{stroke:var(--hair);stroke-width:1.5}
   .tick--major{stroke:rgba(244,238,228,.22)}
   .marker{fill:var(--brass);transition:transform 1.3s var(--ease),fill .6s var(--ease)}
@@ -169,6 +173,15 @@
     <section class="stage rise" style="--d:.06s">
       <div class="dial">
         <svg viewBox="0 0 320 320" aria-hidden="true">
+          <defs>
+            <linearGradient id="arc" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#c6d6e8"/><stop offset="50%" stop-color="#86c4e6"/><stop offset="100%" stop-color="#4f86ad"/>
+            </linearGradient>
+            <linearGradient id="arcHot" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#eaf5ff"/><stop offset="55%" stop-color="#a9e7ff"/><stop offset="100%" stop-color="#6fbfe6"/>
+            </linearGradient>
+          </defs>
+          <circle class="ring-rim" cx="160" cy="160" r="150"/>
           <g id="ticks" class="spin-slow"></g>
           <circle class="ring-track" cx="160" cy="160" r="132" id="ringTrack"/>
           <circle class="ring-fill"  cx="160" cy="160" r="132" id="ringFill"/>
@@ -270,7 +283,9 @@
     const pct=Math.min(100,Math.round(ctx.used/ctx.limit*100));
     const toC=Math.max(0,ctx.compactAt-ctx.used);
     const frac=Math.min(1,ctx.used/ctx.compactAt);
-    const col=frac<0.7?"var(--brass)":"var(--clay)";
+    const hot=frac>=0.7;
+    const col=hot?"url(#arcHot)":"url(#arc)";
+    const dotc=hot?"#a9e7ff":"#86c4e6";
 
     $("#ringTrack").setAttribute("stroke-dasharray",`${VIS} ${C}`);
     $("#ringTrack").setAttribute("transform",`rotate(${START} ${CX} ${CY})`);
@@ -287,7 +302,7 @@
     // marker dot at the arc's end
     const[mx,my]=pt(R,START+frac*SPAN);
     const m=$("#marker");m.setAttribute("cx",mx.toFixed(1));m.setAttribute("cy",my.toFixed(1));
-    m.setAttribute("r","4.5");m.style.fill=col;
+    m.setAttribute("r","4.5");m.style.fill=dotc;
 
     $("#ctxPct").innerHTML=`${pct}<span>%</span>`;
     $("#ctxNote").textContent=toC>0?`${fmtT(toC)} tokens before auto-compaction`:`compaction threshold reached`;
