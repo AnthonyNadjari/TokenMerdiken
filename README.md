@@ -84,8 +84,12 @@ python3 -m http.server 8000   # then open http://localhost:8000
 
 | File | What it is |
 |------|------------|
-| `index.html` | markup |
-| `styles.css` | the whole look (no framework, light + dark) |
-| `app.js` | polling, live timers, gauge, lifecycle log |
-| `data.js` | loads `status.json`, falls back to demo |
+| `index.html` | the entire app — HTML + CSS + JS inlined (one file, nothing else to load) |
+| `status.json` | the data the page reads (written by the watcher; a real snapshot is committed) |
 | `scripts/watch-session.mjs` | Claude Code logs → `status.json` |
+| `.nojekyll` | tells GitHub Pages to serve files as-is |
+
+> Everything is inlined into `index.html` on purpose: on GitHub Pages a single
+> self-contained file can't half-load (the usual cause of a styled-looking page
+> showing up unstyled). The only external request is the Google Fonts link,
+> which falls back to system fonts if blocked.
